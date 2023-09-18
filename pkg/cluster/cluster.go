@@ -585,7 +585,7 @@ func (c *Cluster) compareContainers(description string, setA, setB []v1.Containe
 }
 
 func compareSecurityContexts(a *v1.SecurityContext, b *v1.SecurityContext) bool {
-	if reflect.ValueOf(b.Capabilities).IsNil() {
+	if b == nil || reflect.ValueOf(b.Capabilities).IsNil() {
 		return true
 	} else {
 		return reflect.DeepEqual(a, b)
