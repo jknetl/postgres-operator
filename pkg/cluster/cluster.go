@@ -473,9 +473,12 @@ func (c *Cluster) compareStatefulSetWith(statefulSet *appsv1.StatefulSet) *compa
 		reasons = append(reasons, "new statefulset's pod template metadata annotations does not match "+reason)
 	}
 	if !reflect.DeepEqual(c.Statefulset.Spec.Template.Spec.SecurityContext, statefulSet.Spec.Template.Spec.SecurityContext) {
-		needsReplace = true
-		needsRollUpdate = true
-		reasons = append(reasons, "new statefulset's pod template security context in spec does not match the current one")
+		if reflect.ValueOf(statefulSet.Spec.Template.Spec.SecurityContext.SeccompProfile).IsNil() {
+		} else {
+			needsReplace = true
+			needsRollUpdate = true
+			reasons = append(reasons, "new statefulset's pod template security context in spec does not match the current one")
+		}
 	}
 	if len(c.Statefulset.Spec.VolumeClaimTemplates) != len(statefulSet.Spec.VolumeClaimTemplates) {
 		needsReplace = true
@@ -564,7 +567,7 @@ func (c *Cluster) compareContainers(description string, setA, setB []v1.Containe
 		newCheck("new statefulset %s's %s (index %d) environment sources do not match the current one",
 			func(a, b v1.Container) bool { return !reflect.DeepEqual(a.EnvFrom, b.EnvFrom) }),
 		newCheck("new statefulset %s's %s (index %d) security context does not match the current one",
-			func(a, b v1.Container) bool { return !reflect.DeepEqual(a.SecurityContext, b.SecurityContext) }),
+			func(a, b v1.Container) bool { return !compareSecurityContexts(a.SecurityContext, b.SecurityContext) }),
 		newCheck("new statefulset %s's %s (index %d) volume mounts do not match the current one",
 			func(a, b v1.Container) bool { return !reflect.DeepEqual(a.VolumeMounts, b.VolumeMounts) }),
 	}
@@ -587,6 +590,14 @@ func (c *Cluster) compareContainers(description string, setA, setB []v1.Containe
 	return needsRollUpdate, reasons
 }
 
+func compareSecurityContexts(a *v1.SecurityContext, b *v1.SecurityContext) bool {
+	if b == nil || reflect.ValueOf(b.Capabilities).IsNil() {
+		return true
+	} else {
+		return reflect.DeepEqual(a, b)
+	}
+}
+
 func compareResources(a *v1.ResourceRequirements, b *v1.ResourceRequirements) bool {
 	equal := true
 	if a != nil {
@@ -604,12 +615,12 @@ func compareResourcesAssumeFirstNotNil(a *v1.ResourceRequirements, b *v1.Resourc
 		return len(a.Requests) == 0
 	}
 	for k, v := range a.Requests {
-		if (&v).Cmp(b.Requests[k]) != 0 {
+		if k != "ephemeral-storage" && (&v).Cmp(b.Requests[k]) != 0 {
 			return false
 		}
 	}
 	for k, v := range a.Limits {
-		if (&v).Cmp(b.Limits[k]) != 0 {
+		if k != "ephemeral-storage" && (&v).Cmp(b.Limits[k]) != 0 {
 			return false
 		}
 	}
