@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-test/deep"
+
 	"github.com/sirupsen/logrus"
 	acidv1 "github.com/zalando/postgres-operator/pkg/apis/acid.zalan.do/v1"
 
@@ -523,6 +525,13 @@ func (c *Cluster) compareStatefulSetWith(statefulSet *appsv1.StatefulSet) *compa
 		match = false
 	}
 
+	if diff := deep.Equal(c.Statefulset.Spec.Template.Spec.Containers[0].Resources, statefulSet.Spec.Template.Spec.Containers[0].Resources); diff != nil {
+		reasons = append(reasons, "Spec.Template.Spec.Containers[0].Resources: ")
+		reasons = append(reasons, fmt.Sprintf("Running: %v\n", reflect.ValueOf(c.Statefulset.Spec.Template.Spec.Containers[0].Resources)))
+		reasons = append(reasons, fmt.Sprintf("New: %v\n", reflect.ValueOf(statefulSet.Spec.Template.Spec.Containers[0].Resources)))
+		reasons = append(reasons, diff...)
+	}
+
 	return &compareStatefulsetResult{match: match, reasons: reasons, rollingUpdate: needsRollUpdate, replace: needsReplace}
 }
 
@@ -609,13 +618,19 @@ func compareResourcesAssumeFirstNotNil(a *v1.ResourceRequirements, b *v1.Resourc
 		return len(a.Requests) == 0
 	}
 	for k, v := range a.Requests {
-		if k != "ephemeral-storage" && (&v).Cmp(b.Requests[k]) != 0 {
-			return false
+		if k != "ephemeral-storage" {
+
+			if (&v).Cmp(b.Requests[k]) != 0 {
+				return false
+			}
 		}
+
 	}
 	for k, v := range a.Limits {
-		if k != "ephemeral-storage" && (&v).Cmp(b.Limits[k]) != 0 {
-			return false
+		if k != "ephemeral-storage" {
+			if (&v).Cmp(b.Limits[k]) != 0 {
+				return false
+			}
 		}
 	}
 	return true
