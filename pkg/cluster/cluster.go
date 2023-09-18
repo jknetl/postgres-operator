@@ -532,6 +532,20 @@ func (c *Cluster) compareStatefulSetWith(statefulSet *appsv1.StatefulSet) *compa
 		reasons = append(reasons, diff...)
 	}
 
+	// if diff := deep.Equal(c.Statefulset.Spec.Template.Spec.Containers[0].Resources, statefulSet.Spec.Template.Spec.Containers[0].Resources); diff != nil {
+	// 	reasons = append(reasons, "Spec.Template.Spec.Containers[0].Resources: ")
+	// 	reasons = append(reasons, fmt.Sprintf("Running: %v\n", reflect.ValueOf(c.Statefulset.Spec.Template.Spec.Containers[0].Resources)))
+	// 	reasons = append(reasons, fmt.Sprintf("New: %v\n", reflect.ValueOf(statefulSet.Spec.Template.Spec.Containers[0].Resources)))
+	// 	reasons = append(reasons, diff...)
+	// }
+
+	if diff := deep.Equal(c.Statefulset.Spec.Template.Spec.Tolerations, statefulSet.Spec.Template.Spec.Tolerations); diff != nil {
+		reasons = append(reasons, "Spec.Template.Spec.Tolerations: ")
+		reasons = append(reasons, fmt.Sprintf("Running: %v\n", reflect.ValueOf(c.Statefulset.Spec.Template.Spec.Tolerations)))
+		reasons = append(reasons, fmt.Sprintf("New: %v\n", reflect.ValueOf(statefulSet.Spec.Template.Spec.Tolerations)))
+		reasons = append(reasons, diff...)
+	}
+
 	return &compareStatefulsetResult{match: match, reasons: reasons, rollingUpdate: needsRollUpdate, replace: needsReplace}
 }
 
